@@ -1,95 +1,134 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+'use client';
+
+import { useState } from 'react';
+import axios from 'axios';
 
 export default function Home() {
+  const [jsonInput, setJsonInput] = useState('');
+  const [response, setResponse] = useState(null);
+  const [error, setError] = useState('');
+  const [selectedOptions, setSelectedOptions] = useState([]);
+
+  // Function to validate JSON input
+  const isValidJson = (str) => {
+    try {
+      const obj = JSON.parse(str);
+      return obj && typeof obj === 'object' && obj.hasOwnProperty('data') && Array.isArray(obj.data);
+    } catch (e) {
+      return false;
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    
+    if (!isValidJson(jsonInput)) {
+      setError('Invalid JSON input');
+      return;
+    }
+    
+    try {
+      const parsedData = JSON.parse(jsonInput);
+      const res = await axios.post('http://127.0.0.1:8000/api/srm', { data: parsedData.data }, {
+        headers: { 'Content-Type': 'application/json' }
+      });
+      setResponse(res.data);
+    } catch (err) {
+      console.error('Error details:', err.response ? err.response.data : err.message);
+      setError('An error occurred while fetching data');
+    }
+  };
+
+  const handleOptionChange = (e) => {
+    const { value, checked } = e.target;
+    setSelectedOptions((prevOptions) => {
+      if (checked) {
+        return [...prevOptions, value];
+      } else {
+        return prevOptions.filter((option) => option !== value);
+      }
+    });
+  };
+
+  const renderResponse = () => {
+    if (!response) return null;
+
+    const { numbers, alphabets, highest_alphabet } = response;
+
+    return (
+      <div>
+        {selectedOptions.includes('Numbers') && (
+          <div>
+            <h3>Numbers:</h3>
+            <pre>{JSON.stringify(numbers, null, 2)}</pre>
+          </div>
+        )}
+        {selectedOptions.includes('Alphabets') && (
+          <div>
+            <h3>Alphabets:</h3>
+            <pre>{JSON.stringify(alphabets, null, 2)}</pre>
+          </div>
+        )}
+        {selectedOptions.includes('Highest Alphabet') && (
+          <div>
+            <h3>Highest Alphabet:</h3>
+            <pre>{JSON.stringify(highest_alphabet, null, 2)}</pre>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
-    <main className={styles.main}>
-      <div className={styles.description}>
-        <p>
-          Get started by editing&nbsp;
-          <code className={styles.code}>app/page.js</code>
-        </p>
-        <div>
-          <a
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className={styles.vercelLogo}
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
-        </div>
-      </div>
-
-      <div className={styles.center}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
+    <div>
+      <h1>SRM Frontend</h1>
+      <form onSubmit={handleSubmit}>
+        <textarea
+          value={jsonInput}
+          onChange={(e) => setJsonInput(e.target.value)}
+          rows="4"
+          cols="50"
+          placeholder='Enter JSON like {"data": ["A", "B", "1", "2"]}'
         />
-      </div>
-
-      <div className={styles.grid}>
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Docs <span>-&gt;</span>
-          </h2>
-          <p>Find in-depth information about Next.js features and API.</p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Learn <span>-&gt;</span>
-          </h2>
-          <p>Learn about Next.js in an interactive course with&nbsp;quizzes!</p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Templates <span>-&gt;</span>
-          </h2>
-          <p>Explore starter templates for Next.js.</p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Deploy <span>-&gt;</span>
-          </h2>
-          <p>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
+        <button type="submit">Submit</button>
+      </form>
+      {error && <p style={{ color: 'red' }}>{error}</p>}
+      {response && (
+        <div>
+          <h2>Response</h2>
+          <div>
+            <label>
+              <input
+                type="checkbox"
+                value="Numbers"
+                checked={selectedOptions.includes('Numbers')}
+                onChange={handleOptionChange}
+              />
+              Numbers
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                value="Alphabets"
+                checked={selectedOptions.includes('Alphabets')}
+                onChange={handleOptionChange}
+              />
+              Alphabets
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                value="Highest Alphabet"
+                checked={selectedOptions.includes('Highest Alphabet')}
+                onChange={handleOptionChange}
+              />
+              Highest Alphabet
+            </label>
+          </div>
+          {renderResponse()}
+        </div>
+      )}
+    </div>
   );
 }
